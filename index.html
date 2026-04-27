@@ -1222,6 +1222,59 @@
         return tx;
       }
 
+      function friendlyError(e) {
+        const msg = (e.message || e.toString() || '').toLowerCase();
+        if (msg.includes('no record of a prior credit') || msg.includes('could not find account'))
+          return 'No USDC balance found. Get devnet USDC from faucet.circle.com first.';
+        if (msg.includes('insufficient funds') || msg.includes('insufficient lamports'))
+          return 'Not enough SOL for transaction fees. You need a small amount of devnet SOL.';
+        if (msg.includes('owner does not match') || msg.includes('delegate not approved') || msg.includes('insufficient delegate'))
+          return 'USDC spending not approved. Please try again — the approval step may have been skipped.';
+        if (msg.includes('user rejected') || msg.includes('cancelled') || msg.includes('denied'))
+          return 'Transaction cancelled by user.';
+        if (msg.includes('contractpaused'))
+          return 'Game contract is currently paused. Try again later.';
+        if (msg.includes('wagertoolarge'))
+          return 'Wager exceeds the $50 maximum.';
+        if (msg.includes('cannotjoinowngame'))
+          return 'You cannot join your own game.';
+        if (msg.includes('invalidgamestate'))
+          return 'This game is no longer available.';
+        if (msg.includes('blockhash not found') || msg.includes('block height exceeded'))
+          return 'Transaction expired. Please try again.';
+        if (msg.includes('timeout') || msg.includes('timed out'))
+          return 'Network timeout. Check your connection and try again.';
+        return e.message || 'Transaction failed. Please try again.';
+      }
+
+      async function buildApproveTx(wagerAmount) {
+        const conn = getConnection();
+        const player = wallet.publicKey;
+        const TOKEN_PROGRAM = new solanaWeb3.PublicKey('TokenkegQfeZyiNwAJbNbGKPFXCWuBvf9Ss623VQ5DA');
+        const playerATA = await getATA(player.toBase58(), USDC_MINT);
+        const [transferAuth] = findPDA(['transfer_auth']);
+
+        const data = new Uint8Array(9);
+        data[0] = 4;
+        const dv = new DataView(data.buffer);
+        dv.setBigUint64(1, BigInt(wagerAmount), true);
+
+        const ix = new solanaWeb3.TransactionInstruction({
+          keys: [
+            { pubkey: playerATA, isSigner: false, isWritable: true },
+            { pubkey: transferAuth, isSigner: false, isWritable: false },
+            { pubkey: player, isSigner: true, isWritable: false },
+          ],
+          programId: TOKEN_PROGRAM,
+          data: data,
+        });
+
+        const tx = new solanaWeb3.Transaction().add(ix);
+        tx.feePayer = player;
+        tx.recentBlockhash = (await conn.getLatestBlockhash()).blockhash;
+        return tx;
+      }
+
       window.PaymentAdapter = {
         mode: 'solana',
 
@@ -1234,6 +1287,7 @@
             wallet = {
               publicKey: resp.publicKey,
               signTransaction: provider.signTransaction.bind(provider),
+              signAllTransactions: provider.signAllTransactions?.bind(provider),
               provider: provider,
             };
           } catch (e) {
@@ -1244,11 +1298,17 @@
           const address = wallet.publicKey.toBase58();
 
           let balance = '0.00';
+          let hasUSDC = false;
           try {
             const ata = await getATA(address, USDC_MINT);
             const info = await conn.getTokenAccountBalance(ata);
             balance = info.value.uiAmountString || '0.00';
+            hasUSDC = parseFloat(balance) > 0;
           } catch {}
+
+          if (!hasUSDC) {
+            console.warn('[solana] No USDC balance detected for', address);
+          }
 
           return {
             name: address.slice(0, 4) + '...' + address.slice(-4),
@@ -1262,18 +1322,56 @@
           if (!wallet) return { ready: false, error: 'Wallet not connected' };
           try {
             const conn = getConnection();
-            const tx = role === 'host'
+            const wagerAmount = BigInt(TIER_AMOUNTS[tier] || 1) * BigInt(10 ** USDC_DECIMALS);
+
+            // Check USDC balance before doing anything
+            const playerATA = await getATA(wallet.publicKey.toBase58(), USDC_MINT);
+            let usdcBalance = 0;
+            try {
+              const info = await conn.getTokenAccountBalance(playerATA);
+              usdcBalance = parseInt(info.value.amount || '0');
+            } catch {
+              return { ready: false, error: 'No USDC balance found. Get devnet USDC at faucet.circle.com, then try again.' };
+            }
+
+            if (usdcBalance < Number(wagerAmount)) {
+              const have = (usdcBalance / 1e6).toFixed(2);
+              const need = (Number(wagerAmount) / 1e6).toFixed(2);
+              return { ready: false, error: `Insufficient USDC balance. You have $${have} but need $${need}. Get devnet USDC at faucet.circle.com.` };
+            }
+
+            // Step 1: Approve transfer_authority as delegate (one wallet popup)
+            const approveTx = await buildApproveTx(Number(wagerAmount));
+            const gameTx = role === 'host'
               ? await buildCreateGameTx(tier, gameId)
               : await buildJoinGameTx(gameId);
 
-            const signed = await wallet.signTransaction(tx);
-            const sig = await conn.sendRawTransaction(signed.serialize());
-            await conn.confirmTransaction(sig, 'confirmed');
-            console.log('[solana]', role, 'tx confirmed:', sig);
-            return { ready: true, txSignature: sig };
+            // Try to batch both in one signing if wallet supports it
+            if (wallet.signAllTransactions) {
+              const signed = await wallet.signAllTransactions([approveTx, gameTx]);
+              const approveSig = await conn.sendRawTransaction(signed[0].serialize());
+              await conn.confirmTransaction(approveSig, 'confirmed');
+              console.log('[solana] approve confirmed:', approveSig);
+              const gameSig = await conn.sendRawTransaction(signed[1].serialize());
+              await conn.confirmTransaction(gameSig, 'confirmed');
+              console.log('[solana]', role, 'tx confirmed:', gameSig);
+              return { ready: true, txSignature: gameSig };
+            } else {
+              // Fallback: two separate signing popups
+              const signedApprove = await wallet.signTransaction(approveTx);
+              const approveSig = await conn.sendRawTransaction(signedApprove.serialize());
+              await conn.confirmTransaction(approveSig, 'confirmed');
+              console.log('[solana] approve confirmed:', approveSig);
+
+              const signedGame = await wallet.signTransaction(gameTx);
+              const gameSig = await conn.sendRawTransaction(signedGame.serialize());
+              await conn.confirmTransaction(gameSig, 'confirmed');
+              console.log('[solana]', role, 'tx confirmed:', gameSig);
+              return { ready: true, txSignature: gameSig };
+            }
           } catch (e) {
             console.error('[solana] prepareGame failed:', e);
-            return { ready: false, error: e.message || 'Transaction failed' };
+            return { ready: false, error: friendlyError(e) };
           }
         },
 
@@ -1285,7 +1383,7 @@
         },
 
         async cancelGame(gameId) {
-          if (!wallet) return { success: false };
+          if (!wallet) return { success: false, error: 'Wallet not connected' };
           try {
             const conn = getConnection();
             const tx = await buildCancelGameTx(gameId);
@@ -1294,7 +1392,7 @@
             await conn.confirmTransaction(sig, 'confirmed');
             return { success: true, txSignature: sig };
           } catch (e) {
-            return { success: false, error: e.message };
+            return { success: false, error: friendlyError(e) };
           }
         },
 
