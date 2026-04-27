@@ -288,7 +288,7 @@
                         <div class="queue-row"><span>Tier 1 Queue ($1):</span><span class="queue-count">3 players</span></div>
                         <div class="queue-row"><span>Tier 2 Queue ($10):</span><span class="queue-count">1 player</span></div>
                         <div class="queue-row"><span>Tier 3 Queue ($100):</span><span class="queue-count">0 players</span></div>
-                        <div class="queue-row"><span>Tier 4 Queue ($1,000):</span><span class="queue-count">0 players</span></div>
+                        <div class="queue-row"><span>Test Queue ($0.10):</span><span class="queue-count">0 players</span></div>
                     </div>
                 </div>
 
@@ -312,7 +312,7 @@
                     <div class="tier-card" data-tier="1"><div class="tier-amount">$1</div><div class="tier-label">Tier 1</div></div>
                     <div class="tier-card" data-tier="2"><div class="tier-amount">$10</div><div class="tier-label">Tier 2</div></div>
                     <div class="tier-card" data-tier="3"><div class="tier-amount">$100</div><div class="tier-label">Tier 3</div></div>
-                    <div class="tier-card" data-tier="4"><div class="tier-amount">$1,000</div><div class="tier-label">Tier 4</div></div>
+                    <div class="tier-card" data-tier="4"><div class="tier-amount">$0.10</div><div class="tier-label">Test</div></div>
                 </div>
             </div>
         </div>
@@ -393,6 +393,9 @@
                 <div class="payout-section">
                     <div class="payout-label" id="payoutLabel">Prize Winnings</div>
                     <div class="payout-amount" id="payoutAmount">$0.00</div>
+                    <div class="balance-after" id="balanceAfter" style="margin-top:12px;font-size:14px;color:var(--text-secondary);display:none;">
+                        New Balance: <span id="newBalance" style="color:var(--accent);font-weight:600;">—</span>
+                    </div>
                 </div>
                 <div class="results-buttons">
                     <button class="btn-primary" id="playAgainBtn">Play Again</button>
@@ -795,7 +798,7 @@
 
         // Small delay to show correct/wrong highlights
         setTimeout(() => {
-            const wagerAmounts = [0, 1, 10, 100, 1000];
+            const wagerAmounts = [0, 1, 10, 100, 0.10];
             const wager = wagerAmounts[G.selectedTier] || 1;
             const payout = calculatePayout(result, wager);
 
@@ -844,6 +847,17 @@
             }
 
             showScreen('results');
+
+            // Refresh balance after match
+            if (window.PaymentAdapter && typeof refreshUSDCBalance === 'function') {
+              setTimeout(async () => {
+                const bal = await refreshUSDCBalance();
+                if (bal !== null) {
+                  document.getElementById('newBalance').textContent = '$' + bal + ' USDC';
+                  document.getElementById('balanceAfter').style.display = 'block';
+                }
+              }, 2000); // wait for settlement tx to land
+            }
         }, 1200);
     }
 
@@ -1058,7 +1072,20 @@
       const RPC_URL = 'https://api.devnet.solana.com';
       const NETWORK = 'devnet';
       const USDC_DECIMALS = 6;
-      const TIER_AMOUNTS = { 1: 1, 2: 10, 3: 100, 4: 1000 };
+      const TIER_AMOUNTS = { 1: 1, 2: 10, 3: 100, 4: 0.10 };
+
+      // Refresh and display USDC balance
+      async function refreshUSDCBalance() {
+        if (!wallet) return;
+        try {
+          const conn = getConnection();
+          const ata = await getATA(wallet.publicKey.toBase58(), USDC_MINT);
+          const info = await conn.getTokenAccountBalance(ata);
+          const bal = info.value.uiAmountString || '0.00';
+          document.getElementById('walletBalance').textContent = bal;
+          return bal;
+        } catch { return null; }
+      }
 
       let connection = null;
       let wallet = null;
