@@ -568,6 +568,19 @@
                 }
                 break;
 
+            case 'settle-tx':
+                // Server settled the game on-chain — store tx for "View on Solana" button
+                if (msg.txSignature && window.PaymentAdapter.mode === 'solana') {
+                    G.lastSettleTxUrl = 'https://solscan.io/tx/' + msg.txSignature + '?cluster=devnet';
+                    const solBtn = document.getElementById('viewSolanaBtn');
+                    if (solBtn) {
+                        solBtn.innerHTML = '🔗 View on Solana';
+                        solBtn.style.opacity = '1';
+                        solBtn.style.cursor = 'pointer';
+                    }
+                }
+                break;
+
             case 'error':
                 alert(msg.message || 'Game error');
                 showScreen('landing');
