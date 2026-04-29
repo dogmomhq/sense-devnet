@@ -1889,7 +1889,9 @@
     // ASYNC RESULT HANDLER
     function handleAsyncResult(msg) {
         const matchId = msg.matchId;
-        const isCurrentMatch = matchId === G.asyncMatchId && (G.screen === 'play' || G.screen === 'results');
+        // Show results if: it's the current match, OR we're on a waiting/joining screen (not mid-question on a different match)
+        const isMidQuestion = G.screen === 'play' && !G.answered && G.asyncMatchId !== matchId;
+        const isCurrentMatch = !isMidQuestion && (G.screen === 'play' || G.screen === 'results' || G.screen === 'joining' || G.screen === 'landing');
 
         const result = msg.you.result;
         const wagerAmounts = [0, 1, 10, 100, 0.10];
