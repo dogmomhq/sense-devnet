@@ -1925,10 +1925,13 @@
             document.getElementById('playerOpponent').textContent = G.opponentName;
             if (msg.opponent.time != null) document.getElementById('theirTime').textContent = formatTime(msg.opponent.time);
 
-            document.querySelectorAll('.answer-btn').forEach((btn, i) => {
-                if (i === msg.correctIdx) btn.classList.add('correct');
-                if (i === msg.you.answer && i !== msg.correctIdx) btn.classList.add('wrong');
-            });
+            // Only highlight buttons if this result is for the question currently on screen
+            if (G.asyncMatchId === matchId) {
+                document.querySelectorAll('.answer-btn').forEach((btn, i) => {
+                    if (i === msg.correctIdx) btn.classList.add('correct');
+                    if (i === msg.you.answer && i !== msg.correctIdx) btn.classList.add('wrong');
+                });
+            }
 
             setTimeout(() => {
                 const bannerText = { win: '🎉 YOU WIN', loss: '😔 YOU LOSE', draw: '🤝 DRAW' }[result];
@@ -1938,9 +1941,7 @@
                 if (solBtn1) { solBtn1.style.display = 'none'; solBtn1.href = '#'; }
                 G.lastSettleTxUrl = null;
 
-                const options = Array.from(document.querySelectorAll('.answer-btn')).map(b => b.textContent);
-                let myAnswerText = 'Time expired';
-                if (msg.you.answer >= 0 && msg.you.answer < options.length) myAnswerText = options[msg.you.answer];
+                const myAnswerText = msg.you.answerText || 'Time expired';
                 const myCorrect = msg.you.answer === msg.correctIdx;
 
                 const isSolanaMode = window.__SENSE_MODE === 'solana';
