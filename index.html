@@ -1629,8 +1629,12 @@
                         var solBtn = document.getElementById('viewSolanaBtn');
                         if (solBtn) {
                             solBtn.href = 'https://solscan.io/tx/' + stx + '?cluster=devnet';
-                            solBtn.style.display = 'inline-block';
+                            solBtn.style.display = 'none';
                             G.lastSettleTxUrl = solBtn.href;
+                        }
+                        var stv = document.getElementById('settleTxValue');
+                        if (stv) {
+                            stv.innerHTML = '<a href="https://solscan.io/tx/' + stx + '?cluster=devnet" target="_blank" style="color:var(--accent);text-decoration:none;font-size:12px;">View on Solscan \u2197</a>';
                         }
                     }
                     refreshAllBalances(3000);
@@ -1939,6 +1943,10 @@
                 if (msg.you.answer >= 0 && msg.you.answer < options.length) myAnswerText = options[msg.you.answer];
                 const myCorrect = msg.you.answer === msg.correctIdx;
 
+                const isSolanaMode = window.__SENSE_MODE === 'solana';
+                const createTxLink = isSolanaMode && G.createTxSig ? '<div class="detail-row"><span class="detail-label">Funds \u2192 Vault</span><span class="detail-value"><a href="https://solscan.io/tx/' + G.createTxSig + '?cluster=devnet" target="_blank" style="color:var(--accent);text-decoration:none;font-size:12px;">View on Solscan \u2197</a></span></div>' : '';
+                const settleLabel = result === 'win' ? 'Winnings \u2192 Wallet' : result === 'draw' ? 'Refund \u2192 Wallet' : 'Settlement';
+                const settleTxLink = isSolanaMode ? '<div class="detail-row" id="settleTxRow"><span class="detail-label">' + settleLabel + '</span><span class="detail-value" id="settleTxValue" style="font-size:12px;color:var(--text-secondary);">Settling on-chain...</span></div>' : '';
                 document.getElementById('resultDetails').innerHTML = `
                     <div class="detail-row"><span class="detail-label">Your Answer:</span><span class="detail-value" style="color: ${myCorrect ? 'var(--win)' : 'var(--lose)'}">${myAnswerText}</span></div>
                     <div class="detail-row"><span class="detail-label">Correct Answer:</span><span class="detail-value" style="color: var(--win)">${msg.correctAnswer}</span></div>
@@ -1946,6 +1954,8 @@
                     <div class="detail-row"><span class="detail-label">Opponent Time:</span><span class="detail-value">${formatTime(msg.opponent.time)}</span></div>
                     <div class="detail-row"><span class="detail-label">Result:</span><span class="detail-value">${getReasonText(msg.reason)}</span></div>
                     <div class="detail-row"><span class="detail-label">Wager:</span><span class="detail-value">$${wager} USDC</span></div>
+                    ${createTxLink}
+                    ${settleTxLink}
                 `;
 
                 const payoutLabel = result === 'win' ? 'Prize Winnings (3% fee deducted)' : result === 'draw' ? 'Wager Returned' : 'Amount Lost';
