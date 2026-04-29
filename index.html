@@ -2160,6 +2160,10 @@
             if (myAnswer >= 0 && myAnswer < options.length) myAnswerText = options[myAnswer];
             const myCorrect = myAnswer === correctIdx;
 
+            const isSolanaMode2 = window.__SENSE_MODE === 'solana';
+            const createTxLink2 = isSolanaMode2 && G.createTxSig ? '<div class="detail-row"><span class="detail-label">Funds \u2192 Vault</span><span class="detail-value"><a href="https://solscan.io/tx/' + G.createTxSig + '?cluster=devnet" target="_blank" style="color:var(--accent);text-decoration:none;font-size:12px;">View on Solscan \u2197</a></span></div>' : '';
+            const settleLabel2 = result === 'win' ? 'Winnings \u2192 Wallet' : result === 'draw' ? 'Refund \u2192 Wallet' : 'Settlement';
+            const settleTxLink2 = isSolanaMode2 ? '<div class="detail-row" id="settleTxRow"><span class="detail-label">' + settleLabel2 + '</span><span class="detail-value" id="settleTxValue" style="font-size:12px;color:var(--text-secondary);">Settling on-chain...</span></div>' : '';
             document.getElementById('resultDetails').innerHTML = `
                 <div class="detail-row"><span class="detail-label">Your Answer:</span><span class="detail-value" style="color: ${myCorrect ? 'var(--win)' : 'var(--lose)'}">${myAnswerText}</span></div>
                 <div class="detail-row"><span class="detail-label">Correct Answer:</span><span class="detail-value" style="color: var(--win)">${correctAnswer}</span></div>
@@ -2167,6 +2171,8 @@
                 <div class="detail-row"><span class="detail-label">Opponent Time:</span><span class="detail-value">${formatTime(oppTime)}</span></div>
                 <div class="detail-row"><span class="detail-label">Result:</span><span class="detail-value">${getReasonText(reason)}</span></div>
                 <div class="detail-row"><span class="detail-label">Wager:</span><span class="detail-value">$${wager} USDC</span></div>
+                ${createTxLink2}
+                ${settleTxLink2}
             `;
 
             const payoutLabel = result === 'win' ? 'Prize Winnings (3% fee deducted)' : result === 'draw' ? 'Wager Returned' : 'Amount Lost';
