@@ -772,6 +772,7 @@
         walletAddress: null,
         onChainGameId: null,
         createTxSig: null,
+        createTxMap: {},  // matchId -> createTx signature
         joinTxSig: null,
         lastSettleTxUrl: null,
         simulatedBalance: 50.00,
@@ -1592,6 +1593,8 @@
                 // Store create tx in the pending match so history shows the link
                 if (msg.txSignature) {
                     G.createTxSig = msg.txSignature;
+                    if (msg.matchId) G.createTxMap[msg.matchId] = msg.txSignature;
+                    else if (G.asyncMatchId) G.createTxMap[G.asyncMatchId] = msg.txSignature;
                     Object.values(G.pendingMatches).forEach(function(pm) {
                         if (!pm.createTx) pm.createTx = msg.txSignature;
                     });
@@ -1945,7 +1948,8 @@
                 const myCorrect = msg.you.answer === msg.correctIdx;
 
                 const isSolanaMode = window.__SENSE_MODE === 'solana';
-                const createTxLink = isSolanaMode && G.createTxSig ? '<div class="detail-row"><span class="detail-label">Funds \u2192 Vault</span><span class="detail-value"><a href="https://solscan.io/tx/' + G.createTxSig + '?cluster=devnet" target="_blank" style="color:var(--accent);text-decoration:none;font-size:12px;">View on Solscan \u2197</a></span></div>' : '';
+                const matchCreateTx = G.createTxMap[matchId] || G.createTxSig;
+                const createTxLink = isSolanaMode && matchCreateTx ? '<div class="detail-row"><span class="detail-label">Funds \u2192 Vault</span><span class="detail-value"><a href="https://solscan.io/tx/' + matchCreateTx + '?cluster=devnet" target="_blank" style="color:var(--accent);text-decoration:none;font-size:12px;">View on Solscan \u2197</a></span></div>' : '';
                 const settleLabel = result === 'win' ? 'Winnings \u2192 Wallet' : result === 'draw' ? 'Refund \u2192 Wallet' : 'Settlement';
                 const settleTxLink = isSolanaMode ? '<div class="detail-row" id="settleTxRow"><span class="detail-label">' + settleLabel + '</span><span class="detail-value" id="settleTxValue" style="font-size:12px;color:var(--text-secondary);">Settling on-chain...</span></div>' : '';
                 document.getElementById('resultDetails').innerHTML = `
