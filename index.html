@@ -1619,22 +1619,28 @@
                 refreshAllBalances(2000);
                 break;
             case 'settle-tx':
-                console.log('[chain] Settlement tx:', msg.txSignature, 'game:', msg.gameId);
-                // Store settle tx in the matching history entry
+                console.log('[chain] Settlement tx:', msg.txSignature, 'game:', msg.gameId, 'match:', msg.matchId);
                 if (msg.txSignature) {
                     var stx = msg.txSignature;
+                    var settleMatchId = msg.matchId;
+                    // Store settle tx in the correct history entry by matchId
+                    var matched = false;
                     for (var si = 0; si < G.matchLog.length; si++) {
-                        var ml = G.matchLog[si];
-                        if (!ml.settleTx) { ml.settleTx = stx; break; }
+                        if (G.matchLog[si].matchId === settleMatchId) {
+                            G.matchLog[si].settleTx = stx;
+                            matched = true;
+                            break;
+                        }
+                    }
+                    if (!matched) {
+                        // Fallback: assign to first entry without settleTx
+                        for (var si2 = 0; si2 < G.matchLog.length; si2++) {
+                            if (!G.matchLog[si2].settleTx) { G.matchLog[si2].settleTx = stx; break; }
+                        }
                     }
                     if (G.screen === 'history') renderHistory();
+                    // Update result screen settle link if this is the currently displayed match
                     if (G.screen === 'results') {
-                        var solBtn = document.getElementById('viewSolanaBtn');
-                        if (solBtn) {
-                            solBtn.href = 'https://solscan.io/tx/' + stx + '?cluster=devnet';
-                            solBtn.style.display = 'none';
-                            G.lastSettleTxUrl = solBtn.href;
-                        }
                         var stv = document.getElementById('settleTxValue');
                         if (stv) {
                             stv.innerHTML = '<a href="https://solscan.io/tx/' + stx + '?cluster=devnet" target="_blank" style="color:var(--accent);text-decoration:none;font-size:12px;">View on Solscan \u2197</a>';
