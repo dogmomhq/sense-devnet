@@ -1640,11 +1640,12 @@
                     }
                     if (G.screen === 'history') renderHistory();
                     // Update result screen settle link if this is the currently displayed match
-                    if (G.screen === 'results') {
-                        var stv = document.getElementById('settleTxValue');
-                        if (stv) {
-                            stv.innerHTML = '<a href="https://solscan.io/tx/' + stx + '?cluster=devnet" target="_blank" style="color:var(--accent);text-decoration:none;font-size:12px;">View on Solscan \u2197</a>';
-                        }
+                    var stv = document.getElementById('settleTxValue');
+                    if (stv) {
+                        stv.innerHTML = '<a href="https://solscan.io/tx/' + stx + '?cluster=devnet" target="_blank" style="color:var(--accent);text-decoration:none;font-size:12px;">View on Solscan \u2197</a>';
+                    } else {
+                        // Results screen not rendered yet \u2014 store for when it appears
+                        G.pendingSettleTx = { matchId: settleMatchId, tx: stx };
                     }
                     refreshAllBalances(3000);
                 }
@@ -1984,6 +1985,14 @@
                 const asyncWager2 = asyncWagerAmounts2[G.selectedTier] || 1;
                 updateBalanceAfterMatch(result, asyncWager2);
                 showScreen('results');
+                // Apply any settle-tx that arrived before results screen rendered
+                if (G.pendingSettleTx && G.pendingSettleTx.matchId === matchId) {
+                    var pstv = document.getElementById('settleTxValue');
+                    if (pstv) {
+                        pstv.innerHTML = '<a href="https://solscan.io/tx/' + G.pendingSettleTx.tx + '?cluster=devnet" target="_blank" style="color:var(--accent);text-decoration:none;font-size:12px;">View on Solscan ↗</a>';
+                    }
+                    G.pendingSettleTx = null;
+                }
             }, 1200);
         } else {
             const resultWord = result === 'win' ? 'Won' : result === 'loss' ? 'Lost' : 'Draw';
