@@ -1,0 +1,200 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Visual Test — Static</title>
+    <style>
+        * { margin: 0; padding: 0; box-sizing: border-box; }
+        :root {
+            --bg-primary: #0b1120;
+            --bg-secondary: #131d32;
+            --accent: #00c8ff;
+            --accent-dark: #00a0d4;
+            --accent-glow: rgba(0, 200, 255, 0.25);
+            --text-primary: #ffffff;
+            --text-secondary: #7a8ba5;
+            --border: #1e2d45;
+        }
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+            background: linear-gradient(160deg, #0b1120 0%, #0e1a30 40%, #111f3a 100%);
+            color: var(--text-primary);
+            overflow: hidden;
+            height: 100vh;
+            padding-bottom: 80px;
+            position: relative;
+        }
+        body::before {
+            content: ''; position: fixed; top: 0; left: 0; right: 0; bottom: 0;
+            background:
+                linear-gradient(45deg, rgba(255,255,255,0.035) 25%, transparent 25%),
+                linear-gradient(-45deg, rgba(255,255,255,0.035) 25%, transparent 25%),
+                linear-gradient(45deg, transparent 75%, rgba(255,255,255,0.035) 75%),
+                linear-gradient(-45deg, transparent 75%, rgba(255,255,255,0.035) 75%);
+            background-size: 80px 80px;
+            background-position: 0 0, 0 40px, 40px -40px, -40px 0px;
+            pointer-events: none; z-index: 0;
+        }
+        .container, .nav-bar { position: relative; z-index: 1; }
+        .container {
+            width: 100%; height: 100vh;
+            display: flex; align-items: center; justify-content: center;
+            position: relative;
+        }
+        .screen {
+            position: absolute; width: 100%; height: 100%;
+            display: flex; align-items: center; justify-content: center;
+            padding: 20px;
+        }
+        .nav-bar {
+            position: fixed; left: 0; right: 0; bottom: 0; height: 80px;
+            display: flex; justify-content: space-around; align-items: center;
+            background: linear-gradient(to bottom, rgba(20, 35, 60, 0.98), rgba(11, 17, 32, 0.95));
+            border-top: 1px solid rgba(0, 200, 255, 0.1);
+            backdrop-filter: blur(12px); z-index: 150;
+        }
+        .nav-item {
+            display: flex; flex-direction: column; align-items: center; justify-content: center;
+            background: none; border: none; cursor: pointer; color: var(--text-secondary);
+            padding: 6px 12px; font-size: 13px; font-weight: 600; gap: 4px;
+        }
+        .nav-item svg { width: 28px; height: 28px; }
+        .nav-item.active { color: var(--accent); }
+
+        .landing-content { text-align: center; max-width: 500px; padding: 20px; margin: auto; display: flex; flex-direction: column; justify-content: center; min-height: calc(100vh - 90px); }
+
+        .landing-top-bar {
+            display: flex; align-items: center;
+            background: var(--bg-secondary); border: 1px solid var(--border);
+            border-radius: 18px; padding: 22px 24px; margin-bottom: 48px; gap: 0;
+        }
+        .landing-top-bar .wallet-icon {
+            width: 48px; height: 48px; background: #2d8a4e;
+            border-radius: 14px; display: flex; align-items: center; justify-content: center;
+            flex-shrink: 0; margin-right: 14px;
+        }
+        .landing-top-bar .wallet-icon svg { width: 26px; height: 26px; stroke: #fff; fill: none; }
+        .landing-top-bar .username-display {
+            color: var(--text-primary); font-size: 18px; font-weight: 700;
+            text-align: left; font-family: 'Courier New', monospace;
+            line-height: 1.2; min-width: 80px;
+        }
+        .landing-top-bar .wallet-divider {
+            width: 1px; height: 36px; background: var(--border);
+            margin: 0 16px; flex-shrink: 0;
+        }
+        .landing-top-bar .balance-col { text-align: center; line-height: 1.3; }
+        .landing-top-bar .balance-col .bal-label-top { font-size: 15px; color: var(--text-secondary); font-weight: 500; }
+        .landing-top-bar .balance-col .bal-value { font-size: 22px; font-weight: 700; color: var(--accent); }
+        .landing-top-bar .approved-col { text-align: center; line-height: 1.3; }
+        .landing-top-bar .approved-col .approved-label { font-size: 15px; color: var(--text-secondary); font-weight: 500; }
+        .landing-top-bar .approved-col .approved-value { font-size: 22px; font-weight: 700; color: var(--text-primary); }
+
+        .tier-grid { display: flex; gap: 12px; margin-bottom: 40px; }
+        .tier-card {
+            background: linear-gradient(145deg, #1e2f4a, #182840);
+            border: 2px solid rgba(255,255,255,0.07);
+            border-radius: 18px; padding: 28px 8px; cursor: pointer;
+            position: relative; overflow: hidden;
+            min-height: 100px; display: flex; flex-direction: column;
+            justify-content: center; align-items: center;
+            flex: 1; aspect-ratio: 1 / 1.1;
+        }
+        .tier-card::after {
+            content: ''; position: absolute; top: 0; left: 0; right: 0; bottom: 0;
+            background: linear-gradient(135deg, rgba(255,255,255,0.06) 0%, rgba(255,255,255,0.03) 35%, transparent 55%);
+            pointer-events: none; border-radius: inherit;
+        }
+        .tier-card.selected {
+            flex: 1.5; border-color: var(--accent);
+            background: linear-gradient(145deg, rgba(0, 200, 255, 0.12), rgba(0, 100, 180, 0.1));
+            box-shadow: 0 0 25px rgba(0, 200, 255, 0.5), 0 0 50px rgba(0, 200, 255, 0.2), inset 0 0 25px rgba(0, 200, 255, 0.08);
+        }
+        .tier-card.selected::after { display: none; }
+        .tier-amount { font-size: 26px; font-weight: 800; color: var(--text-primary); margin-bottom: 2px; }
+        .tier-card.selected .tier-amount { font-size: 32px; color: var(--accent); }
+        .tier-count { font-size: 12px; color: var(--text-secondary); letter-spacing: 0.3px; font-weight: 500; }
+        .tier-card.selected .tier-count { color: var(--accent); font-size: 14px; }
+        .tier-check {
+            position: absolute; top: 8px; right: 8px; width: 20px; height: 20px;
+            background: rgba(0, 150, 255, 0.15); border-radius: 50%;
+            display: flex; align-items: center; justify-content: center;
+        }
+        .tier-check svg { width: 10px; height: 10px; stroke: var(--accent); stroke-width: 2.5; fill: none; }
+        .tier-card.selected .tier-check { display: none; }
+
+        .play-now-btn {
+            background: linear-gradient(180deg, #faf8f4 0%, #f0ede6 30%, #e4e0d8 60%, #d8d4cc 100%);
+            border: none; color: #1a1a2e;
+            padding: 22px 48px; border-radius: 36px;
+            font-size: 22px; font-weight: 900; cursor: pointer;
+            margin: 8px 0 36px; width: 100%; max-width: 340px; letter-spacing: 3px;
+            text-transform: uppercase;
+            box-shadow: 0 7px 0 #9a9690, 0 9px 24px rgba(0,0,0,0.45), inset 0 2px 0 rgba(255,255,255,0.6);
+        }
+        .play-free-btn {
+            background: transparent; border: 2px solid rgba(255,255,255,0.15);
+            color: var(--text-secondary); padding: 14px 48px; border-radius: 32px;
+            font-size: 15px; font-weight: 600; cursor: pointer;
+            width: 100%; max-width: 320px;
+        }
+    </style>
+</head>
+<body>
+    <div class="nav-bar">
+        <button class="nav-item active">
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><polygon points="6 3 20 12 6 21"/></svg>
+            <span>Play</span>
+        </button>
+        <button class="nav-item">
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M5 3h14v2H5zm0 2v4c0 1.1.4 2 1 2.7V20h3v-4h6v4h3v-8.3c.6-.7 1-1.6 1-2.7V5h-2v4c0 .6-.4 1-1 1h-2V5H9v5H7c-.6 0-1-.4-1-1V5H5zM3 5a2 2 0 00-1 3.5V10l2-1V5H3zm18 0v4l2 1V8.5A2 2 0 0021 5z"/></svg>
+            <span>Challenge</span>
+        </button>
+        <button class="nav-item">
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="12" cy="8" r="4.5"/><path d="M4 21c0-4.4 3.6-8 8-8s8 3.6 8 8H4z"/></svg>
+            <span>Profile</span>
+        </button>
+        <button class="nav-item">
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><circle cx="9" cy="7" r="4"/><path d="M2 21v-2c0-2.2 1.8-4 4-4h6c2.2 0 4 1.8 4 4v2H2z"/><circle cx="17" cy="7" r="3"/><path d="M22 21v-2c0-1.5-.8-2.8-2-3.5-.4.3-.8.6-1.3.8 1.3.7 2.3 2 2.3 3.7v1h1z"/></svg>
+            <span>Hosts</span>
+        </button>
+        <button class="nav-item">
+            <svg viewBox="0 0 24 24" fill="currentColor" stroke="none"><path d="M12 2C6.5 2 2 6.5 2 12s4.5 10 10 10 10-4.5 10-10S17.5 2 12 2zm0 18c-4.4 0-8-3.6-8-8s3.6-8 8-8 8 3.6 8 8-3.6 8-8 8zm.5-13H11v6l5.2 3.1.8-1.3-4.5-2.7V7z"/></svg>
+            <span>History</span>
+        </button>
+    </div>
+
+    <div class="container">
+        <div class="screen">
+            <div class="landing-content">
+                <div class="landing-top-bar" style="display: flex;">
+                    <div class="wallet-icon">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="2" y="5" width="20" height="14" rx="2"/><path d="M16 12h2"/></svg>
+                    </div>
+                    <div class="username-display">H6EX...<br>hsD6</div>
+                    <div class="wallet-divider"></div>
+                    <div class="balance-col"><div class="bal-label-top">USDC:</div><div class="bal-value">$3.65</div></div>
+                    <div class="wallet-divider"></div>
+                    <div class="approved-col"><div class="approved-label">Approved</div><div class="approved-value">Games: 4</div></div>
+                </div>
+
+                <div style="text-align: center;">
+                    <button class="play-now-btn">PLAY NOW</button>
+                </div>
+
+                <div class="tier-grid">
+                    <div class="tier-card selected"><div class="tier-amount">$0.10</div><div class="tier-count">(4 Games)</div></div>
+                    <div class="tier-card"><div class="tier-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div><div class="tier-amount">$1</div><div class="tier-count"></div></div>
+                    <div class="tier-card"><div class="tier-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div><div class="tier-amount">$10</div><div class="tier-count"></div></div>
+                    <div class="tier-card"><div class="tier-check"><svg viewBox="0 0 12 12"><polyline points="2 6 5 9 10 3"/></svg></div><div class="tier-amount">$100</div><div class="tier-count"></div></div>
+                </div>
+
+                <div style="text-align: center; margin: 20px 0 0;">
+                    <button class="play-free-btn">Play Free</button>
+                </div>
+            </div>
+        </div>
+    </div>
+</body>
+</html>
